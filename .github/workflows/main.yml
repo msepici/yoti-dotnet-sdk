@@ -1,0 +1,84 @@
+name: codex-change
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "What Codex should do"
+        required: true
+      branch:
+        description: "Target feature branch (will be created if missing)"
+        required: true
+      base:
+        description: "Base branch to branch from"
+        default: "master"
+        required: true
+
+jobs:
+  apply-codex-change:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # commit/push
+      pull-requests: write   # PR açma
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.base }}
+
+      - name: Ensure feature branch
+        run: |
+          git fetch origin ${{ github.event.inputs.branch }} || true
+          if git rev-parse --verify origin/${{ github.event.inputs.branch }} >/dev/null 2>&1; then
+            git checkout ${{ github.event.inputs.branch }}
+          else
+            git checkout -b ${{ github.event.inputs.branch }}
+          fi
+
+      - name: Install Codex CLI
+        run: |
+          npm i -g @openai/codex
+
+      - name: Run Codex in automation mode
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # Örn: .NET API'ye Order/XYZ endpointi ekle
+          codex exec --full-auto "${{ github.event.inputs.task }}"
+
+      - name: Commit & push
+        run: |
+          git config user.name "codex-bot"
+          git config user.email "codex-bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes from Codex."
+            exit 0
+          fi
+          git commit -m "feat: apply Codex changes"
+          git push origin HEAD:${{ github.event.inputs.branch }}
+
+      - name: Open PR
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: prs } = await github.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              head: `${context.repo.owner}:${{ github.event.inputs.branch }}`
+            });
+            if (prs.length === 0) {
+              const pr = await github.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: "feat: Codex-applied changes",
+                head: "${{ github.event.inputs.branch }}",
+                base: "${{ github.event.inputs.base }}",
+                body: "Automated by Codex CLI."
+              });
+              core.notice(`PR opened: ${pr.data.html_url}`);
+            } else {
+              core.notice(`Existing PR: ${prs[0].html_url}`);
+            }
