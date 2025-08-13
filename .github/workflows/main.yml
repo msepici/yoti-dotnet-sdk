@@ -10,7 +10,7 @@ on:
         required: true
       base:
         description: "Base branch to branch from"
-        default: "master"
+        default: "main"
         required: true
 
 jobs:
@@ -42,7 +42,6 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Örn: .NET API'ye Order/XYZ endpointi ekle
           codex exec --model gpt-4o --full-auto "${{ github.event.inputs.task }}"
 
       - name: Commit & push
@@ -54,23 +53,23 @@ jobs:
             echo "No changes from Codex."
             exit 0
           fi
-          git commit -m "feat: apply Codex changes"
+          git commit -m "feat: Codex-applied changes"
           git push origin HEAD:${{ github.event.inputs.branch }}
 
       - name: Open PR
-        if: ${{ success() }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { data: prs } = await github.pulls.list({
+            const { data: prs } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "open",
               head: `${context.repo.owner}:${{ github.event.inputs.branch }}`
             });
+
             if (prs.length === 0) {
-              const pr = await github.pulls.create({
+              const pr = await github.rest.pulls.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: "feat: Codex-applied changes",
