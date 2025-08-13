@@ -43,7 +43,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # Örn: .NET API'ye Order/XYZ endpointi ekle
-          codex exec --full-auto "${{ github.event.inputs.task }}"
+          codex exec --model gpt-4o --full-auto "${{ github.event.inputs.task }}"
 
       - name: Commit & push
         run: |
