@@ -15,6 +15,38 @@ namespace Yoti.Auth
         private readonly YotiClientEngine _yotiClientEngine;
         internal Uri ApiUri { get; private set; }
 
+    /// <summary>
+    /// Request attribute with a fallback to another attribute.
+    /// </summary>
+    /// <param name="primaryAttribute">The primary attribute to request.</param>
+    /// <param name="fallbackAttribute">The attribute to use as a fallback.</param>
+    /// <returns>A structured response indicating the result.</returns>
+    public AttributeResult RequestAttributeWithFallback(string primaryAttribute, string fallbackAttribute)
+    {
+        // Logic to request primary attribute
+        bool primarySuccess = RequestAttribute(primaryAttribute, out var primaryResult);
+        if (primarySuccess)
+        {
+            return new AttributeResult(primaryResult, fallbackUsed: false);
+        }
+
+        // Fallback to secondary attribute
+        bool fallbackSuccess = RequestAttribute(fallbackAttribute, out var fallbackResult);
+        if (fallbackSuccess)
+        {
+            return new AttributeResult(fallbackResult, fallbackUsed: true);
+        }
+
+        // Return failure response
+        return new AttributeResult(fallbackUsed: false);
+    }
+
+    private bool RequestAttribute(string attributeName, out object result)
+    {
+        // Placeholder logic for requesting attribute
+        result = null;
+        return false; // Assume failure for now
+    }
         /// <summary>
         /// Create a <see cref="YotiClient"/>
         /// </summary>
