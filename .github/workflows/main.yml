@@ -43,7 +43,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          codex exec --model gpt-4o --full-auto "${{ github.event.inputs.task }}"
+          echo "${{ github.event.inputs.task }}" > prompt.txt
+          codex exec --model gpt-4o --full-auto --stdin < prompt.txt
 
       - id: commit_push
         name: Commit & push (and detect remote branch)
