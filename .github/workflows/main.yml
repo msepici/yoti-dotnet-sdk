@@ -96,8 +96,8 @@ jobs:
           
           echo "::notice title=Codex Execution::Starting Codex execution..."
           
-          # Run codex with error handling
-          if codex exec --model gpt-4o --full-auto --stdin < prompt.txt; then
+          # Run codex with prompt as argument (not stdin)
+          if codex exec --model gpt-4o --full-auto "$(cat prompt.txt)"; then
             echo "::notice title=Codex Success::Codex execution completed successfully"
           else
             echo "::error title=Codex Failed::Codex execution failed"
@@ -217,7 +217,7 @@ jobs:
         run: |
           echo "## Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Task:** ${{ github.event.inputs.task }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Task:** $(head -c 100 prompt.txt)..." >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** ${{ github.event.inputs.branch }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Base:** ${{ github.event.inputs.base }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Changes Detected:** ${{ steps.changes.outputs.has_changes || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
