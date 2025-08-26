@@ -1,12 +1,13 @@
 name: codex-change
+
 on:
   workflow_dispatch:
     inputs:
       task:
-        description: "What Codex should do"
+        description: "What Codex should do (free-form text; Markdown allowed)"
         required: true
       branch:
-        description: "Target feature branch (will be created if missing)"
+        description: "Target feature branch (created if missing)"
         required: true
       base:
         description: "Base branch to branch from"
@@ -21,51 +22,63 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout
+      - name: Checkout base
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.base }}
 
       - name: Ensure feature branch
         run: |
-          git fetch origin ${{ github.event.inputs.branch }} || true
-          if git rev-parse --verify origin/${{ github.event.inputs.branch }} >/dev/null 2>&1; then
-            git checkout ${{ github.event.inputs.branch }}
-            git merge --no-edit origin/${{ github.event.inputs.branch }} || true
+          set -e
+          BR="${{ github.event.inputs.branch }}"
+          git fetch origin "$BR" || true
+          if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
+            git checkout "$BR"
+            git merge --no-edit "origin/$BR" || true
           else
-            git checkout -b ${{ github.event.inputs.branch }}
+            git checkout -b "$BR"
           fi
 
       - name: Install Codex CLI
         run: npm i -g @openai/codex
 
+      # ✅ Safest way to pass arbitrary text (with backticks, $(), etc.) to Codex:
+      #    Put it in an env var and pass it as a positional arg after `--`.
       - name: Run Codex in automation mode
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TASK: ${{ github.event.inputs.task }}
         run: |
-          printf '%s' "${{ github.event.inputs.task }}" > prompt.txt
-          codex exec --model gpt-4o --full-auto --stdin < prompt.txt
+          set -e
+          if [ -z "${TASK}" ]; then
+            echo "Input 'task' is empty; aborting." >&2
+            exit 1
+          fi
+          codex exec --model gpt-4o --full-auto -- "${TASK}"
 
       - id: commit_push
         name: Commit & push (and detect remote branch)
         run: |
           set -e
           BR="${{ github.event.inputs.branch }}"
-          git config user.name "codex-bot"
+          git config user.name  "codex-bot"
           git config user.email "codex-bot@users.noreply.github.com"
           git add -A
-          echo "pushed=false" >> $GITHUB_OUTPUT
+
+          echo "pushed=false" >> "$GITHUB_OUTPUT"
+
           if git diff --cached --quiet; then
             echo "No changes from Codex."
           else
             git commit -m "feat: Codex-applied changes"
-            git push origin HEAD:$BR
-            echo "pushed=true" >> $GITHUB_OUTPUT
+            git push origin HEAD:"$BR"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
+
           if git ls-remote --heads origin "$BR" | grep -q "$BR"; then
-            echo "remote_branch_exists=true" >> $GITHUB_OUTPUT
+            echo "remote_branch_exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "remote_branch_exists=false" >> $GITHUB_OUTPUT
+            echo "remote_branch_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Open PR
@@ -78,10 +91,12 @@ jobs:
             const repo  = context.repo.repo;
             const headBranch = "${{ github.event.inputs.branch }}";
             const baseBranch = "${{ github.event.inputs.base }}";
+
             const { data: prs } = await github.rest.pulls.list({
               owner, repo, state: "open",
               head: `${owner}:${headBranch}`
             });
+
             if (prs.length === 0) {
               const pr = await github.rest.pulls.create({
                 owner, repo,
