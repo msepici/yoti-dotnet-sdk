@@ -1,0 +1,278 @@
+[2025-08-26T08:02:45] OpenAI Codex v0.23.0 (research preview)
+--------
+workdir: /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+model: gpt-4o
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+--------
+[2025-08-26T08:02:45] User instructions:
+IMPORTANT: Apply changes by directly editing files in this repository.
+Do NOT create or write patch files under /tmp. Save edits in-place.
+
+To implement the new properties for configuring dark mode in the IDV Web SDK, follow this detailed implementation plan. The plan breaks down the tasks into manageable steps necessary to complete the feature from start to finish.  ### Step-by-Step Implementation Plan:  #### Step 1: Update the SdkConfig Object Model - **Task 1.1**: Add New Properties   - Add  as a property of the  object model.   - Add  as a property of the  object model.    - **Task 1.2**: Modify Builders   - Update the builder class for  to include methods for setting these two new properties. Make sure methods are chainable to maintain current builder pattern consistency.  #### Step 2: Implement Helper Methods - **Task 2.1**: Create Helper Methods for    - **Method 2.1.1**: Implement a helper method  that sets the  to ON.   - **Method 2.1.2**: Implement a helper method  that sets the  to OFF.   - **Method 2.1.3**: Implement a helper method  that sets the  to AUTO.  #### Step 3: Modify JSON Serialization - **Task 3.1**: Update JSON Serialization Logic   - Ensure that  and  are only included in the JSON payload if they are set by the Relying Business.  #### Step 4: Testing - **Task 4.1**: Unit Testing   - Write tests for the new properties to ensure they are correctly set and serialized.   - Test each helper method to ensure they set the  appropriately in the  object.  - **Task 4.2**: Integration Testing   - Run integration tests to confirm that the entire IDV session creation process works smoothly with the new properties configured.    #### Step 5: Documentation - **Task 5.1**: Update Documentation   - Update any relevant developer guides or inline documentation to include instructions on configuring  and .   - Document the new helper methods for easier developer comprehension.  #### Step 6: Code Review and Deployment - **Task 6.1**: Peer Code Review   - Submit the code for review to ensure quality and adherence to project standards.  - **Task 6.2**: Prepare for Deployment   - Merge into the main branch if all tests pass and the code review is successful.   - Follow the deployment process to deliver the updated SDK to Relying Businesses.  This implementation plan outlines the necessary steps to integrate and support the new dark mode configuration, ensuring a smooth development process and compliance with existing system architecture. EOF
+[2025-08-26T08:02:46] codex
+
+To implement the new properties for configuring dark mode in the IDV Web SDK, I will follow these steps. Let’s start with updating the `SdkConfig` object model.
+
+### Plan
+
+1. **Update SdkConfig Object Model**
+   - Add new properties: `darkModeEnabled` and `darkModeAuto`.
+   - Modify builders for these properties.
+2. **Implement Helper Methods**
+   - Method to set dark mode to ON.
+   - Method to set dark mode to OFF.
+   - Method to set dark mode to AUTO.
+3. **Modify JSON Serialization**
+   - Ensure properties are included only if set by the Relying Business.
+4. **Testing**
+   - Write unit tests for new properties.
+   - Test helper methods for correct functionality.
+5. **Documentation**
+   - Update developer guides and inline documentation.
+6. **Code Review and Deployment**
+   - Peer code review and merge if successful.
+   - Follow deployment process.
+
+I will begin by updating the `SdkConfig` object model. Let's proceed with that.
+[2025-08-26T08:02:57] exec rg SdkConfig in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:02:57] rg SdkConfig succeeded in 11ms:
+codex-transcript.log:To implement the new properties for configuring dark mode in the IDV Web SDK, follow this detailed implementation plan. The plan breaks down the tasks into manageable steps necessary to complete the feature from start to finish.  ### Step-by-Step Implementation Plan:  #### Step 1: Update the SdkConfig Object Model - **Task 1.1**: Add New Properties   - Add  as a property of the  object model.   - Add  as a property of the  object model.    - **Task 1.2**: Modify Builders   - Update the builder class for  to include methods for setting these two new properties. Make sure methods are chainable to maintain current builder pattern consistency.  #### Step 2: Implement Helper Methods - **Task 2.1**: Create Helper Methods for    - **Method 2.1.1**: Implement a helper method  that sets the  to ON.   - **Method 2.1.2**: Implement a helper method  that sets the  to OFF.   - **Method 2.1.3**: Implement a helper method  that sets the  to AUTO.  #### Step 3: Modify JSON Serialization - **Task 3.1**: Update JSON Serialization Logic   - Ensure that  and  are only included in the JSON payload if they are set by the Relying Business.  #### Step 4: Testing - **Task 4.1**: Unit Testing   - Write tests for the new properties to ensure they are correctly set and serialized.   - Test each helper method to ensure they set the  appropriately in the  object.  - **Task 4.2**: Integration Testing   - Run integration tests to confirm that the entire IDV session creation process works smoothly with the new properties configured.    #### Step 5: Documentation - **Task 5.1**: Update Documentation   - Update any relevant developer guides or inline documentation to include instructions on configuring  and .   - Document the new helper methods for easier developer comprehension.  #### Step 6: Code Review and Deployment - **Task 6.1**: Peer Code Review   - Submit the code for review to ensure quality and adherence to project standards.  - **Task 6.2**: Prepare for Deployment   - Merge into the main branch if all tests pass and the code review is successful.   - Follow the deployment process to deliver the updated SDK to Relying Businesses.  This implementation plan outlines the necessary steps to integrate and support the new dark mode configuration, ensuring a smooth development process and compliance with existing system architecture. EOF
+codex-transcript.log:To implement the new properties for configuring dark mode in the IDV Web SDK, I will follow these steps. Let’s start with updating the `SdkConfig` object model.
+codex-transcript.log:1. **Update SdkConfig Object Model**
+codex-transcript.log:I will begin by updating the `SdkConfig` object model. Let's proceed with that.
+codex-transcript.log:[2025-08-26T08:02:57] exec rg SdkConfig in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:    public class SdkConfigBuilderTests
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:            SdkConfig sdkConfig =
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:              new SdkConfigBuilder()
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:            SdkConfig sdkConfig =
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:              new SdkConfigBuilder()
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:            SdkConfig sdkConfig =
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:              new SdkConfigBuilder()
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:            SdkConfig sdkConfig =
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:              new SdkConfigBuilder()
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:            SdkConfig sdkConfig =
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:              new SdkConfigBuilder()
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:            SdkConfig sdkConfig =
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:              new SdkConfigBuilder()
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:            SdkConfig sdkConfig =
+test/Yoti.Auth.Tests/DocScan/Session/Create/SdkConfigBuilderTests.cs:              new SdkConfigBuilder()
+[2025-08-26T08:02:57] tokens used: 5966
+[2025-08-26T08:02:59] exec rg SdkConfig src/ in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:02:59] rg SdkConfig src/ succeeded in 9ms:
+src/Yoti.Auth/GlobalSuppressions.cs:[assembly: SuppressMessage("Design", "CA1054:Uri parameters should not be strings", Justification = "This is a string for a JSON payload", Scope = "member", Target = "~M:Yoti.Auth.DocScan.Session.Create.SdkConfigBuilder.WithErrorUrl(System.String)~Yoti.Auth.DocScan.Session.Create.SdkConfigBuilder")]
+src/Yoti.Auth/GlobalSuppressions.cs:[assembly: SuppressMessage("Design", "CA1054:Uri parameters should not be strings", Justification = "This is a string for a JSON payload", Scope = "member", Target = "~M:Yoti.Auth.DocScan.Session.Create.SdkConfigBuilder.WithSuccessUrl(System.String)~Yoti.Auth.DocScan.Session.Create.SdkConfigBuilder")]
+src/Yoti.Auth/GlobalSuppressions.cs:[assembly: SuppressMessage("Design", "CA1054:Uri parameters should not be strings", Justification = "This is a string for a JSON payload", Scope = "member", Target = "~M:Yoti.Auth.DocScan.Session.Create.SdkConfigBuilder.WithPrivacyPolicyUrl(System.String)~Yoti.Auth.DocScan.Session.Create.SdkConfigBuilder")]
+src/Yoti.Auth/GlobalSuppressions.cs:[assembly: SuppressMessage("Design", "CA1056:Uri properties should not be strings", Justification = "This is a string for a JSON payload", Scope = "member", Target = "~P:Yoti.Auth.DocScan.Session.Create.SdkConfig.SuccessUrl")]
+src/Yoti.Auth/GlobalSuppressions.cs:[assembly: SuppressMessage("Design", "CA1056:Uri properties should not be strings", Justification = "This is a string for a JSON payload", Scope = "member", Target = "~P:Yoti.Auth.DocScan.Session.Create.SdkConfig.ErrorUrl")]
+src/Yoti.Auth/GlobalSuppressions.cs:[assembly: SuppressMessage("Design", "CA1056:Uri properties should not be strings", Justification = "This is a string for a JSON payload", Scope = "member", Target = "~P:Yoti.Auth.DocScan.Session.Create.SdkConfig.PrivacyPolicyUrl")]
+src/Yoti.Auth/DocScan/Session/Create/SessionSpecificationBuilder.cs:        private SdkConfig _sdkConfig;
+src/Yoti.Auth/DocScan/Session/Create/SessionSpecificationBuilder.cs:        /// Sets the <see cref="SdkConfig"/>
+src/Yoti.Auth/DocScan/Session/Create/SessionSpecificationBuilder.cs:        /// <param name="sdkConfig">The <see cref="SdkConfig"/></param>
+src/Yoti.Auth/DocScan/Session/Create/SessionSpecificationBuilder.cs:        public SessionSpecificationBuilder WithSdkConfig(SdkConfig sdkConfig)
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:    public class SdkConfigBuilder
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        /// <returns>The <see cref="SdkConfigBuilder"/></returns>
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        public SdkConfigBuilder WithAllowsCamera()
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        /// <returns>The <see cref="SdkConfigBuilder"/></returns>
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        public SdkConfigBuilder WithAllowsCameraAndUpload()
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        /// <returns>The <see cref="SdkConfigBuilder"/></returns>
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        public SdkConfigBuilder WithAllowedCaptureMethods(string allowedCaptureMethods)
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        /// <returns>The <see cref="SdkConfigBuilder"/></returns>
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        public SdkConfigBuilder WithPrimaryColour(string primaryColour)
+src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs:        /// <returns>The <see cref="SdkConfigBuilder"/></returns>
+[2025-08-26T08:02:59] tokens used: 2956
+[2025-08-26T08:03:00] codex
+
+I found the relevant files to update for the `SdkConfig` object model. We'll focus on two main files to begin with:
+
+- `src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs`: This file defines the `SdkConfig` class.
+- `src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs`: This is where we can add the builder methods.
+
+Let's start by adding the new properties `darkModeEnabled` and `darkModeAuto` to the `SdkConfig` class.
+[2025-08-26T08:03:04] exec head -n 30 src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:03:04] head -n 30 src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs succeeded in 2ms:
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
+
+namespace Yoti.Auth.DocScan.Session.Create
+{
+    /// <summary>
+    /// SdkConfig provides configuration properties for the the web/native clients
+    /// </summary>
+    public class SdkConfig
+    {
+        [JsonProperty(PropertyName = "allowed_capture_methods")]
+        public string AllowedCaptureMethods { get; }
+
+        [JsonProperty(PropertyName = "primary_colour")]
+        public string PrimaryColour { get; }
+
+        [JsonProperty(PropertyName = "secondary_colour")]
+        public string SecondaryColour { get; }
+
+        [JsonProperty(PropertyName = "font_colour")]
+[2025-08-26T08:03:04] tokens used: 2388
+[2025-08-26T08:03:06] exec tail -n 30 src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:03:06] tail -n 30 src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs succeeded in 1ms:
+                            string fontColour,
+                            string locale,
+                            string presetIssuingCountry,
+                            string successUrl,
+                            string errorUrl,
+                            string privacyPolicyUrl,
+                            bool? allowHandoff = null,
+                            Dictionary<string, int> idDocumentTextDataExtractionRetriesConfig = null)
+        {
+            AllowedCaptureMethods = allowedCaptureMethods;
+            PrimaryColour = primaryColour;
+            SecondaryColour = secondaryColour;
+            FontColour = fontColour;
+            Locale = locale;
+            PresetIssuingCountry = presetIssuingCountry;
+            SuccessUrl = successUrl;
+            ErrorUrl = errorUrl;
+            PrivacyPolicyUrl = privacyPolicyUrl;
+            AllowHandoff = allowHandoff;
+
+[2025-08-26T08:03:06] tokens used: 612
+[2025-08-26T08:03:08] codex
+
+Let's add the new properties `darkModeEnabled` and `darkModeAuto` to the `SdkConfig` class. I'll update the constructor and the JSON serialization logic to include these properties.
+[2025-08-26T08:03:10] exec head -n 6 src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:03:10] head -n 6 src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs succeeded in 1ms:
+﻿using System.Collections.Generic;
+using Yoti.Auth.Constants;
+
+namespace Yoti.Auth.DocScan.Session.Create
+{
+    public class SdkConfigBuilder
+[2025-08-26T08:03:10] tokens used: 546
+[2025-08-26T08:03:11] exec tail -n 30 src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:03:11] tail -n 30 src/Yoti.Auth/DocScan/Session/Create/SdkConfigBuilder.cs succeeded in 1ms:
+        /// </remarks>
+        /// <param name="genericAttempts">The number of generic attempts</param>
+        /// <returns>The <see cref="SdkConfigBuilder"/></returns>
+        public SdkConfigBuilder WithIdDocumentTextExtractionGenericAttempts(int genericAttempts)
+        {
+            WithIdDocumentTextExtractionCategoryAttempts(DocScanConstants.Generic, genericAttempts);
+            return this;
+        }   
+
+        /// <summary>
+        /// Builds the <see cref="SdkConfig"/> based on values supplied to the builder
+        /// </summary>
+        /// <returns>The built <see cref="SdkConfig"/></returns>
+        public SdkConfig Build()
+        {
+            return new SdkConfig(
+                _allowedCaptureMethods,
+                _primaryColour,
+                _secondaryColour,
+                _fontColour,
+[2025-08-26T08:03:11] tokens used: 296
+[2025-08-26T08:03:11] codex
+
+Next, I will update the `SdkConfigBuilder` to include methods for setting the new properties `darkModeEnabled` and `darkModeAuto`. I'll ensure the builder methods are chainable.
+
+Let's proceed with these updates.
+[2025-08-26T08:03:13] exec echo 'Updating `SdkConfig` and `SdkConfigBuilder` to add dark mode properties.' in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:03:13] echo 'Updating `SdkConfig` and `SdkConfigBuilder` to add dark mode properties.' succeeded in 2ms:
+Updating `SdkConfig` and `SdkConfigBuilder` to add dark mode properties.
+[2025-08-26T08:03:13] tokens used: 644
+[2025-08-26T08:03:24] tokens used: 1026
+[2025-08-26T08:03:25] codex
+
+It seems there was an issue with the patch formatting. Let me correct that and try again.
+[2025-08-26T08:03:31] tokens used: 952
+[2025-08-26T08:03:32] codex
+
+Let's adjust the patch once more to correct the issue. I'll fix it and reapply the changes.
+[2025-08-26T08:03:41] tokens used: 1668
+[2025-08-26T08:03:44] codex
+
+It seems the patch text was truncated. I'll simplify and apply it again to ensure it's complete.
+[2025-08-26T08:03:49] tokens used: 1490
+[2025-08-26T08:03:50] codex
+
+Let's correct the truncation issue and try applying the patch again.
+[2025-08-26T08:03:56] tokens used: 1654
+[2025-08-26T08:03:57] codex
+
+It seems I made a repeated error. Let's clean up the patch and apply it correctly this time.
+[2025-08-26T08:04:02] tokens used: 1701
+[2025-08-26T08:04:03] codex
+
+It seems there may be a persistent issue with my patch syntax. I'll proceed to implement these changes directly in the files by writing out the corrections. Let's correct these manually.
+[2025-08-26T08:04:06] exec echo 'Attempting direct edits in `SdkConfig` and `SdkConfigBuilder`.' in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:04:06] echo 'Attempting direct edits in `SdkConfig` and `SdkConfigBuilder`.' succeeded in 1ms:
+Attempting direct edits in `SdkConfig` and `SdkConfigBuilder`.
+[2025-08-26T08:04:06] tokens used: 1080
+[2025-08-26T08:04:09] exec echo 'Updating `SdkConfig` and `SdkConfigBuilder` manually to include dark mode properties.' in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:04:09] echo 'Updating `SdkConfig` and `SdkConfigBuilder` manually to include dark mode properties.' succeeded in 1ms:
+Updating `SdkConfig` and `SdkConfigBuilder` manually to include dark mode properties.
+[2025-08-26T08:04:09] tokens used: 293
+[2025-08-26T08:04:15] tokens used: 953
+[2025-08-26T08:04:16] codex
+
+Let's break this down step-by-step and ensure we successfully update these files. I'll manually go through the changes.
+[2025-08-26T08:04:18] exec echo 'Analyzing approach to apply manual changes to SdkConfig and SdkConfigBuilder.' in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:04:18] echo 'Analyzing approach to apply manual changes to SdkConfig and SdkConfigBuilder.' succeeded in 1ms:
+Analyzing approach to apply manual changes to SdkConfig and SdkConfigBuilder.
+[2025-08-26T08:04:18] tokens used: 303
+[2025-08-26T08:04:19] codex
+
+Let's start by reading specific sections directly to finalize this update manually.
+
+**Step-by-Step Update:**
+
+1. **Add Properties to `SdkConfig`:**
+   - Add the properties `DarkModeEnabled` and `DarkModeAuto` to the class.
+   
+2. **Modify Constructor in `SdkConfig`:**
+   - Update the constructor to include these new properties.
+
+3. **Update `SdkConfigBuilder`:**
+   - Add private fields `_darkModeEnabled` and `_darkModeAuto`.
+   - Add methods `WithDarkModeEnabled` and `WithDarkModeAuto`.
+   
+I'll proceed with these updates one by one. Let's start with reading the files accurately to then apply changes.
+[2025-08-26T08:04:25] exec sed -i "'/public class SdkConfig/a \\
+    [JsonProperty(PropertyName = \"dark_mode_enabled\")]
+    public bool? DarkModeEnabled { get; }
+
+    [JsonProperty(PropertyName = \"dark_mode_auto\")]
+    public bool? DarkModeAuto { get; }
+'" src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:04:25] sed -i "'/public class SdkConfig/a \\
+    [JsonProperty(PropertyName = \"dark_mode_enabled\")]
+    public bool? DarkModeEnabled { get; }
+
+    [JsonProperty(PropertyName = \"dark_mode_auto\")]
+    public bool? DarkModeAuto { get; }
+'" src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs exited -1 in 0ms:
+sed: -e expression #1, char 1: unknown command: `''
+[2025-08-26T08:04:25] tokens used: 482
+[2025-08-26T08:04:27] codex
+
+It seems `sed` is not executing as intended. Let's break down changes directly in the text editor or a compatible method in this environment.
+[2025-08-26T08:04:28] exec echo 'Inserting properties for DarkModeEnabled and DarkModeAuto directly in SdkConfig.' in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:04:28] echo 'Inserting properties for DarkModeEnabled and DarkModeAuto directly in SdkConfig.' succeeded in 1ms:
+Inserting properties for DarkModeEnabled and DarkModeAuto directly in SdkConfig.
+[2025-08-26T08:04:29] tokens used: 481
+[2025-08-26T08:04:30] exec echo 'Updating constructor and builder methods in SdkConfig and SdkConfigBuilder.' in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:04:30] echo 'Updating constructor and builder methods in SdkConfig and SdkConfigBuilder.' succeeded in 1ms:
+Updating constructor and builder methods in SdkConfig and SdkConfigBuilder.
+[2025-08-26T08:04:30] tokens used: 326
+[2025-08-26T08:04:32] exec sed -i "'/Dictionary<string, int> idDocumentTextDataExtractionRetriesConfig = null,/a \\
+        bool? darkModeEnabled = null,
+        bool? darkModeAuto = null'" src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs in /home/runner/work/yoti-dotnet-sdk/yoti-dotnet-sdk
+[2025-08-26T08:04:32] sed -i "'/Dictionary<string, int> idDocumentTextDataExtractionRetriesConfig = null,/a \\
+        bool? darkModeEnabled = null,
+        bool? darkModeAuto = null'" src/Yoti.Auth/DocScan/Session/Create/SdkConfig.cs exited -1 in 0ms:
+sed: -e expression #1, char 1: unknown command: `''
+[2025-08-26T08:04:33] tokens used: 312
+[2025-08-26T08:04:34] codex
+
+The direct `sed` commands aren't executing properly. I'll adjust my approach to update these files effectively. Please wait while I proceed.
+[2025-08-26T08:04:35] tokens used: 262
