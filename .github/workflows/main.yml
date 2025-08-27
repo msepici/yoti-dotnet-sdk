@@ -1,16 +1,69 @@
-- name: Run Codex (safe prompt; includes file index; no shell in sandbox)
-  env:
-    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-    RAW_TASK: ${{ inputs.task }}
-  shell: bash
-  run: |
-    set -euo pipefail
-    TMP="${RUNNER_TEMP:-/tmp}"
-    PROMPT="${TMP}/task.txt"
-    LOG="${TMP}/codex-transcript.log"
+name: Apply Codex Change
 
-    # Write guardrail header via HEREDOC (note the quoted delimiter)
-    cat > "$PROMPT" <<'HDR'
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Describe exactly what Codex should change (can be long)."
+        required: true
+        type: string
+      base_branch:
+        description: "Base branch to start from"
+        required: false
+        default: "master"
+        type: string
+      head_branch:
+        description: "Working branch to push changes"
+        required: false
+        default: "dev-text-codex-2"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply-codex-change:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Prepare Git (create or track head branch)
+        shell: bash
+        env:
+          BR: ${{ inputs.head_branch }}
+          BASE: ${{ inputs.base_branch }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$BR" || true
+          if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
+            git checkout -B "$BR" "origin/$BR"
+          else
+            git checkout -B "$BR" "origin/$BASE"
+          fi
+
+      - name: Install Codex CLI
+        run: npm i -g @openai/codex
+
+      - name: Run Codex (safe prompt; includes file index; no shell in sandbox)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RAW_TASK: ${{ inputs.task }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TMP="${RUNNER_TEMP:-/tmp}"
+          PROMPT="${TMP}/task.txt"
+          LOG="${TMP}/codex-transcript.log"
+
+          # Guardrail header (written via HEREDOC)
+          cat > "$PROMPT" <<'HDR'
 IMPORTANT: In the Codex sandbox, shell commands (rg, grep, find, ls, etc.) are NOT available.
 Do NOT execute any shell commands or spawn processes.
 Discover and open files by recursively listing and globbing within the current workspace ONLY,
@@ -20,25 +73,95 @@ This repository is a .NET/C# SDK (yoti-dotnet-sdk). Focus ONLY on C#.
 Ignore Java/JS/TS/Python/Go. Do not add non-.NET code or build files.
 HDR
 
-    printf '\n' >> "$PROMPT"
+          printf '\n' >> "$PROMPT"
 
-    # Append the user's task safely (no shell eval)
-    printf -- '%s\n' "$RAW_TASK" >> "$PROMPT"
-    printf '\n' >> "$PROMPT"
+          # Append the user's task safely (no shell eval)
+          printf -- '%s\n' "$RAW_TASK" >> "$PROMPT"
+          printf '\n' >> "$PROMPT"
 
-    # Append a repo file index so Codex can "see" files without shell tools in its sandbox
-    {
-      echo "BEGIN_FILE_INDEX"
-      git ls-files
-      echo "END_FILE_INDEX"
-    } >> "$PROMPT"
+          # Append a repo file index so Codex can "see" files without shell tools in its sandbox
+          {
+            echo "BEGIN_FILE_INDEX"
+            git ls-files
+            echo "END_FILE_INDEX"
+          } >> "$PROMPT"
 
-    echo "===== BEGIN TASK (preview) ====="
-    sed -n '1,120p' "$PROMPT" || true
-    echo "=====  END TASK  ====="
+          echo "===== BEGIN TASK (preview) ====="
+          sed -n '1,120p' "$PROMPT" || true
+          echo "=====  END TASK  ====="
 
-    # Run Codex
-    codex exec --model gpt-4o --full-auto -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
+          # Run Codex and capture transcript outside the repo
+          codex exec --model gpt-4o --full-auto -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
 
-    echo "Codex transcript saved at: $LOG"
-    tail -n 200 "$LOG" || true
+          echo "Codex transcript saved at: $LOG"
+          tail -n 200 "$LOG" || true
+
+      - name: Verify workspace changed (real code edits only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "----- git status (porcelain) -----"
+          git status --porcelain=v1 || true
+          echo "----------------------------------"
+          if ! git status --porcelain=v1 | grep -q '^[ MARCUD]'; then
+            echo "::error title=Codex made no changes::No modified files found after Codex execution."
+            exit 1
+          fi
+          echo "Workspace has changes."
+
+      - id: commit_push
+        name: Commit & push changes
+        env:
+          BR: ${{ inputs.head_branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name  "codex-bot"
+          git config user.email "codex-bot@users.noreply.github.com"
+
+          echo "----- git diff (name-only) -----"
+          git diff --name-only
+          echo "--------------------------------"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No staged changes; skipping commit."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "feat: Codex-applied changes"
+          git push --set-upstream origin "$BR"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update PR
+        if: steps.commit_push.outputs.pushed == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const headBranch = core.getInput('head_branch') || 'dev-text-codex-2';
+            const baseBranch = core.getInput('base_branch') || 'master';
+
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo, state: "open",
+              head: `${owner}:${headBranch}`
+            });
+
+            if (prs.length) {
+              core.notice(`Existing PR: ${prs[0].html_url}`);
+            } else {
+              const pr = await github.rest.pulls.create({
+                owner, repo,
+                title: "feat: Codex-applied changes",
+                head: headBranch,
+                base: baseBranch,
+                body: [
+                  "Automated by Codex CLI.",
+                  "Transcript is printed in the job logs (stored in runner temp)."
+                ].join("\n")
+              });
+              core.notice(`PR opened: ${pr.data.html_url}`);
+            }
