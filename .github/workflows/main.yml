@@ -112,6 +112,7 @@ jobs:
           echo "----------------------------------"
           if ! git status --porcelain=v1 | grep -q '^[ MARCUD]'; then
             echo "::error title=Codex made no changes::No modified files found after Codex execution."
+            cat $LOG
             exit 1
           fi
           echo "Workspace has changes."
