@@ -1,5 +1,7 @@
 Yoti .NET SDK
 =============
+### Added
+- Support for `brand_id` property in SDK configuration for custom branding in IDV iframe.
 
 [![Build Status](https://dev.azure.com/yoti/Dotnet%20SDK/_apis/build/status/getyoti.yoti-dotnet-sdk?branchName=master)](https://dev.azure.com/yoti/Dotnet%20SDK/_build/latest?definitionId=3&branchName=master)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=getyoti%3Adotnet&metric=coverage)](https://sonarcloud.io/dashboard?id=getyoti%3Adotnet)
