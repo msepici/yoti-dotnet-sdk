@@ -74,3 +74,5 @@ namespace Yoti.Auth.DocScan.Session.Create
         }
     }
 }
+   [JsonProperty(PropertyName = "brand_id")]
+   public string BrandId { get; }

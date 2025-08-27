@@ -1,5 +1,10 @@
 ﻿using System.Collections.Generic;
 using Yoti.Auth.Constants;
+    public SdkConfigBuilder WithBrandId(string brandId)
+    {
+        _brandId = brandId;
+        return this;
+    }
 
 namespace Yoti.Auth.DocScan.Session.Create
 {
