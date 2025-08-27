@@ -1,124 +1,138 @@
-name: codex-change
+name: Apply Codex Change
 
 on:
   workflow_dispatch:
     inputs:
       task:
-        description: "What Codex should do (plain English instructions)"
+        description: "Describe exactly what Codex should change (can be long)."
         required: true
-      branch:
-        description: "Target feature branch (will be created if missing)"
-        required: true
-      base:
-        description: "Base branch to branch from"
+        type: string
+      base_branch:
+        description: "Base branch to start from"
+        required: false
         default: "master"
-        required: true
+        type: string
+      head_branch:
+        description: "Working branch to push changes"
+        required: false
+        default: "dev-text-codex-2"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   apply-codex-change:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
 
     steps:
-      - name: Checkout base
+      - name: Checkout base branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.base }}
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 1
+          persist-credentials: true
 
-      - name: Ensure feature branch exists and is checked out
+      - name: Prepare Git (create or track head branch)
         shell: bash
+        env:
+          BR: ${{ inputs.head_branch }}
+          BASE: ${{ inputs.base_branch }}
         run: |
           set -euo pipefail
-          BR="${{ github.event.inputs.branch }}"
-          # Try to fetch remote branch (ok if not found)
           git fetch origin "$BR" || true
           if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
             git checkout -B "$BR" "origin/$BR"
           else
-            git checkout -b "$BR"
+            git checkout -B "$BR" "origin/$BASE"
           fi
 
       - name: Install Codex CLI
         run: npm i -g @openai/codex
 
-      - name: Run Codex (edit files in-place)
+      - name: Run Codex (safe prompt; temp files outside repo)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RAW_TASK: ${{ inputs.task }}
         shell: bash
         run: |
           set -euo pipefail
-          # Build final instruction with a short guardrail header
-          cat > task.txt <<'TASK'
+          TMP="${RUNNER_TEMP:-/tmp}"
+          PROMPT="${TMP}/task.txt"
+          LOG="${TMP}/codex-transcript.log"
+
+          # Guardrail header ensures in-place edits (not /tmp patches)
+          cat > "$PROMPT" <<'HDR'
           IMPORTANT: Apply changes by directly editing files in this repository.
           Do NOT create or write patch files under /tmp. Save edits in-place.
+          HDR
+          printf '\n' >> "$PROMPT"
 
-          TASK
-          printf '%s\n' "${{ github.event.inputs.task }}" >> task.txt
+          # Append the user prompt safely: no command/backtick/$() execution
+          # (using a variable + printf is safe; the shell doesn't re-parse its contents)
+          printf -- '%s\n' "$RAW_TASK" >> "$PROMPT"
 
           echo "===== BEGIN TASK ====="
-          cat task.txt
+          cat "$PROMPT"
           echo "=====  END TASK  ====="
 
-          # Execute Codex (no --stdin; pass the prompt as a single argument)
-          # Capture transcript for troubleshooting
-          codex exec --model gpt-4o --full-auto -- "$(cat task.txt)" \
-            2>&1 | tee codex-transcript.log
+          # Execute Codex and capture transcript OUTSIDE the repo
+          codex exec --model gpt-4o --full-auto -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
 
-      - name: Verify workspace changed
+          echo "Codex transcript saved at: $LOG"
+
+      - name: Verify workspace changed (real code edits only)
         shell: bash
         run: |
           set -euo pipefail
-          # Show a short status and diff summary for visibility
           echo "----- git status (porcelain) -----"
           git status --porcelain=v1
           echo "----------------------------------"
-          if ! git status --porcelain=v1 | grep -q .; then
+          # Fail if no tracked files changed
+          if ! git status --porcelain=v1 | grep -q '^[ MARCUD]'; then
             echo "::error title=Codex made no changes::No modified files found after Codex execution."
-            echo "Tip: Make your 'task' super explicit about which parts to add/change."
             exit 1
           fi
           echo "Workspace has changes."
 
       - id: commit_push
-        name: Commit & push
+        name: Commit & push changes
+        env:
+          BR: ${{ inputs.head_branch }}
         shell: bash
         run: |
           set -euo pipefail
-          BR="${{ github.event.inputs.branch }}"
-
           git config user.name  "codex-bot"
           git config user.email "codex-bot@users.noreply.github.com"
 
-          # Show a brief diff (optional, helpful in logs)
-          echo "----- git diff --staged (pre-add) -----"
-          git diff --staged || true
-          echo "---------------------------------------"
+          # Show a brief diff in logs
+          echo "----- git diff (name-only) -----"
+          git diff --name-only
+          echo "--------------------------------"
 
           git add -A
-          echo "pushed=false" >> "$GITHUB_OUTPUT"
-
           if git diff --cached --quiet; then
-            echo "No staged changes (unexpected at this point)."
-          else
-            git commit -m "feat: Codex-applied changes"
-            git push origin HEAD:"$BR"
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "No staged changes; skipping commit."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-      - name: Open PR
+          git commit -m "feat: Codex-applied changes"
+          git push --set-upstream origin "$BR"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update PR
         if: steps.commit_push.outputs.pushed == 'true'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
-            const headBranch = "${{ github.event.inputs.branch }}";
-            const baseBranch = "${{ github.event.inputs.base }}";
+            const headBranch = core.getInput('head_branch') || 'dev-text-codex-2';
+            const baseBranch = core.getInput('base_branch') || 'master';
 
-            // If an open PR from this branch already exists, surface it
             const { data: prs } = await github.rest.pulls.list({
               owner, repo, state: "open",
               head: `${owner}:${headBranch}`
@@ -130,25 +144,12 @@ jobs:
               const pr = await github.rest.pulls.create({
                 owner, repo,
                 title: "feat: Codex-applied changes",
-                head: headBranch,  // same-repo → use plain branch name
+                head: headBranch,
                 base: baseBranch,
                 body: [
                   "Automated by Codex CLI.",
-                  "",
-                  "Transcript artifact: check job logs for 'codex-transcript.log'."
+                  "Transcript is printed in the job logs (stored in runner temp)."
                 ].join("\n")
               });
               core.notice(`PR opened: ${pr.data.html_url}`);
             }
-
-      - name: Explain why PR not created
-        if: steps.commit_push.outputs.pushed != 'true'
-        shell: bash
-        run: |
-          echo "::notice title=PR Skipped::No commit was pushed."
-          echo "Most common causes:"
-          echo "1) Codex produced no concrete file edits (only logs/patch drafts)."
-          echo "2) Edits failed due to context mismatch."
-          echo "3) Guardrails prevented changes."
-          echo ""
-          echo "See 'codex-transcript.log' in the job logs for details."
