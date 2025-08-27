@@ -8,8 +8,14 @@ namespace Yoti.Auth.DocScan.Session.Create
     /// </summary>
     public class SdkConfig
     {
-        [JsonProperty(PropertyName = "allowed_capture_methods")]
-        public string AllowedCaptureMethods { get; }
+       [JsonProperty(PropertyName = "allowed_capture_methods")]
+       public string AllowedCaptureMethods { get; }
+
+       [JsonProperty(PropertyName = "dark_mode")]
+       public string DarkMode { get; set; }
+
+       [JsonProperty(PropertyName = "primary_colour_dark_mode")]
+       public string PrimaryColourDarkMode { get; set; }
 
         [JsonProperty(PropertyName = "primary_colour")]
         public string PrimaryColour { get; }
