@@ -81,7 +81,7 @@ jobs:
           codex exec --model gpt-4o --full-auto -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
 
           echo "Codex transcript saved at: $LOG"
-
+          cat $LOG
       - name: Verify workspace changed (real code edits only)
         shell: bash
         run: |
