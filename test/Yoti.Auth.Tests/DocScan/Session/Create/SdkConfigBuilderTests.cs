@@ -16,6 +16,37 @@ namespace Yoti.Auth.Tests.DocScan.Session.Create
               .WithAllowsCamera()
               .Build();
 
+    [Fact]
+    public void Should_Omit_DarkMode_When_Not_Set()
+    {
+        var config = new SdkConfigBuilder().Build();
+        var json = JsonConvert.SerializeObject(config);
+        Assert.DoesNotContain("dark_mode", json);
+    }
+
+    [Fact]
+    public void Should_Include_DarkMode_When_Set_To_On()
+    {
+        var config = new SdkConfigBuilder().WithDarkModeOn().Build();
+        var json = JsonConvert.SerializeObject(config);
+        Assert.Contains("\"dark_mode\":\"ON\"", json);
+    }
+
+    [Fact]
+    public void Should_Include_DarkMode_When_Set_To_Auto()
+    {
+        var config = new SdkConfigBuilder().WithDarkModeAuto().Build();
+        var json = JsonConvert.SerializeObject(config);
+        Assert.Contains("\"dark_mode\":\"AUTO\"", json);
+    }
+
+    [Fact]
+    public void Should_Include_PrimaryColourDarkMode_When_Set()
+    {
+        var config = new SdkConfigBuilder().WithPrimaryColourDarkMode("#112233").Build();
+        var json = JsonConvert.SerializeObject(config);
+        Assert.Contains("\"primary_colour_dark_mode\":\"#112233\"", json);
+    }
             Assert.AreEqual("CAMERA", sdkConfig.AllowedCaptureMethods);
         }
 

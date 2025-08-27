@@ -7,12 +7,18 @@ namespace Yoti.Auth.DocScan.Session.Create
     /// SdkConfig provides configuration properties for the the web/native clients
     /// </summary>
     public class SdkConfig
-    {
-        [JsonProperty(PropertyName = "allowed_capture_methods")]
-        public string AllowedCaptureMethods { get; }
+   {
+       [JsonProperty(PropertyName = "allowed_capture_methods")]
+       public string AllowedCaptureMethods { get; }
 
-        [JsonProperty(PropertyName = "primary_colour")]
-        public string PrimaryColour { get; }
+        [JsonProperty(PropertyName = "dark_mode", NullValueHandling = NullValueHandling.Ignore)]
+        public string? DarkMode { get; set; }
+
+        [JsonProperty(PropertyName = "primary_colour_dark_mode", NullValueHandling = NullValueHandling.Ignore)]
+        public string? PrimaryColourDarkMode { get; set; }
+
+       [JsonProperty(PropertyName = "primary_colour")]
+       public string PrimaryColour { get; }
 
         [JsonProperty(PropertyName = "secondary_colour")]
         public string SecondaryColour { get; }

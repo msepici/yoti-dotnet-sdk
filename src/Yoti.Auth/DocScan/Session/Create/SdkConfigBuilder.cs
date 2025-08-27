@@ -16,7 +16,34 @@ namespace Yoti.Auth.DocScan.Session.Create
         private string _privacyPolicyUrl;
         private bool? _allowHandoff;
         private Dictionary<string, int> _idDocumentTextDataExtractionAttemptsConfig;
+        private SdkConfig _sdkConfig;
 
+        public SdkConfigBuilder WithDarkMode(string value)
+        {
+            _sdkConfig.DarkMode = value;
+            return this;
+        }
+
+        public SdkConfigBuilder WithDarkModeOn()
+        {
+            return WithDarkMode("ON");
+        }
+
+        public SdkConfigBuilder WithDarkModeOff()
+        {
+            return WithDarkMode("OFF");
+        }
+
+        public SdkConfigBuilder WithDarkModeAuto()
+        {
+            return WithDarkMode("AUTO");
+        }
+
+        public SdkConfigBuilder WithPrimaryColourDarkMode(string value)
+        {
+            _sdkConfig.PrimaryColourDarkMode = value;
+            return this;
+        }
         /// <summary>
         /// Sets the allowed capture method to "CAMERA"
         /// </summary>
