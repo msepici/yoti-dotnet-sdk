@@ -147,6 +147,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         # NOTE: context.inputs is the documented way to read workflow_dispatch inputs here
+        # NOTE2
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
