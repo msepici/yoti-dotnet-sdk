@@ -51,7 +51,7 @@ jobs:
       - name: Install Codex CLI
         run: npm i -g @openai/codex
 
-      - name: Run Codex (safe prompt; includes file index; no shell in sandbox)
+      - name: Run Codex (use agents.md + file index)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           RAW_TASK: ${{ inputs.task }}
@@ -62,35 +62,42 @@ jobs:
           PROMPT="${TMP}/task.txt"
           LOG="${TMP}/codex-transcript.log"
 
-          # Guardrail header (written via HEREDOC)
-          cat > "$PROMPT" <<'HDR'
-IMPORTANT: In the Codex sandbox, shell commands (rg, grep, find, ls, etc.) are NOT available.
-Do NOT execute any shell commands or spawn processes.
-Discover and open files by recursively listing and globbing within the current workspace ONLY,
-and read/write files directly (no /tmp patches). Edit files IN-PLACE in this repository.
-
-This repository is a .NET/C# SDK (yoti-dotnet-sdk). Focus ONLY on C#.
-Ignore Java/JS/TS/Python/Go. Do not add non-.NET code or build files.
-HDR
-
-          printf '\n' >> "$PROMPT"
-
-          # Append the user's task safely (no shell eval)
-          printf -- '%s\n' "$RAW_TASK" >> "$PROMPT"
-          printf '\n' >> "$PROMPT"
-
-          # Append a repo file index so Codex can "see" files without shell tools in its sandbox
+          # Start prompt with a tiny header (kept minimal to avoid YAML issues)
           {
+            echo "IMPORTANT: Edit files IN-PLACE in this repository. No /tmp patches."
+            echo "Use only the workspace APIs; do not spawn shell commands within the Codex sandbox."
+            echo
+            echo "### USER TASK"
+            printf '%s\n' "$RAW_TASK"
+            echo
+          } > "$PROMPT"
+
+          # Append agent guidance if present
+          if [ -f agents.md ]; then
+            {
+              echo "### AGENT HINTS (agents.md)"
+              echo "BEGIN_AGENT_HINTS"
+              # Normalize line endings just in case
+              sed 's/\r$//' agents.md
+              echo "END_AGENT_HINTS"
+              echo
+            } >> "$PROMPT"
+          fi
+
+          # Append a repository file index (so Codex can 'see' files without rg/find)
+          {
+            echo "### FILE INDEX (git ls-files)"
             echo "BEGIN_FILE_INDEX"
             git ls-files
             echo "END_FILE_INDEX"
+            echo
           } >> "$PROMPT"
 
-          echo "===== BEGIN TASK (preview) ====="
-          sed -n '1,120p' "$PROMPT" || true
-          echo "=====  END TASK  ====="
+          echo "===== BEGIN TASK PREVIEW ====="
+          sed -n '1,160p' "$PROMPT" || true
+          echo "=====  END TASK PREVIEW  ====="
 
-          # Run Codex and capture transcript outside the repo
+          # Execute Codex and capture transcript
           codex exec --model gpt-4o --full-auto -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
 
           echo "Codex transcript saved at: $LOG"
@@ -139,11 +146,12 @@ HDR
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+        # NOTE: context.inputs is the documented way to read workflow_dispatch inputs here
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
-            const headBranch = core.getInput('head_branch') || 'dev-text-codex-2';
-            const baseBranch = core.getInput('base_branch') || 'master';
+            const headBranch = context.payload.inputs?.head_branch || 'dev-text-codex-2';
+            const baseBranch = context.payload.inputs?.base_branch || 'master';
 
             const { data: prs } = await github.rest.pulls.list({
               owner, repo, state: "open",
