@@ -176,3 +176,34 @@ namespace Yoti.Auth.DigitalIdentity.Policy
         }
     }
 }
+        /// <summary>
+        /// Adds a requirement for the "estimated_age" or "date_of_birth" attribute.
+        /// </summary>
+        /// <param name="ageOfInterest">(0..99) Defaults to 18.</param>
+        /// <param name="bufferYears">(0..20) Defaults to 5.</param>
+        /// <param name="required">If true, sets optional to false. Defaults to true.</param>
+        /// <returns>The updated PolicyBuilder.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when ageOfInterest or bufferYears are outside their valid ranges.
+        /// </exception>
+        public PolicyBuilder RequireEstimatedAgeOrDob(
+            int ageOfInterest = 18,
+            int bufferYears = 5,
+            bool required = true)
+        {
+            if (ageOfInterest < 0 || ageOfInterest > 99)
+                throw new ArgumentOutOfRangeException(nameof(ageOfInterest), "Age of interest must be between 0 and 99.");
+
+            if (bufferYears < 0 || bufferYears > 20)
+                throw new ArgumentOutOfRangeException(nameof(bufferYears), "Buffer years must be between 0 and 20.");
+
+            string derivation = $"age_over:{ageOfInterest}:{bufferYears}";
+            var wantedAttribute = new WantedAttributeBuilder()
+                .WithName("estimated_age")
+                .WithAlternativeNames(new List<string> { "date_of_birth" })
+                .WithDerivation(derivation)
+                .WithOptional(!required)
+                .WithAcceptSelfAsserted(false)
+                .Build();
+            return WithWantedAttribute(wantedAttribute);
+        }
