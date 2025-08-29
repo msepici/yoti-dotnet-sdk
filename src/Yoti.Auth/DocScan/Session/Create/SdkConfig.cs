@@ -74,3 +74,17 @@ namespace Yoti.Auth.DocScan.Session.Create
         }
     }
 }
+using Newtonsoft.Json;
+
+public class SdkConfig
+{
+    [JsonProperty(PropertyName = "brand_id")]
+    public string BrandId { get; set; }
+
+    public SdkConfig() { }
+
+    public SdkConfig(string brandId)
+    {
+        BrandId = brandId;
+    }
+}

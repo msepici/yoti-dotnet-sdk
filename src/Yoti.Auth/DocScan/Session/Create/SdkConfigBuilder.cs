@@ -257,3 +257,18 @@ namespace Yoti.Auth.DocScan.Session.Create
         }
     }
 }
+public class SdkConfigBuilder
+{
+    private string _brandId;
+
+    public SdkConfigBuilder WithBrandId(string brandId)
+    {
+        _brandId = brandId;
+        return this;
+    }
+
+    public SdkConfig Build()
+    {
+        return new SdkConfig(brandId: _brandId);
+    }
+}

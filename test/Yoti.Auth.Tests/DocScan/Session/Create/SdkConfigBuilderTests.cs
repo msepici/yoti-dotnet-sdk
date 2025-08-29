@@ -233,3 +233,23 @@ namespace Yoti.Auth.Tests.DocScan.Session.Create
         }
     }
 }
+using Xunit;
+
+public class SdkConfigBuilderTests
+{
+    [Fact]
+    public void Should_SetBrandIdCorrectly()
+    {
+        var builder = new SdkConfigBuilder().WithBrandId("testBrandId");
+        var config = builder.Build();
+        Assert.Equal("testBrandId", config.BrandId);
+    }
+
+    [Fact]
+    public void Should_HandleNullBrandId()
+    {
+        var builder = new SdkConfigBuilder().WithBrandId(null);
+        var config = builder.Build();
+        Assert.Null(config.BrandId);
+    }
+}
