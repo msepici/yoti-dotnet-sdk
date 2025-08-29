@@ -70,3 +70,4 @@ namespace Yoti.Auth.DocScan.Session.Create
         public object AdvancedIdentityProfileRequirements { get; }
     }
 }
+public string BrandId { get; set; }

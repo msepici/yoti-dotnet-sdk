@@ -4,9 +4,15 @@ using Newtonsoft.Json;
 using Yoti.Auth.DocScan.Session.Create.Check;
 using Yoti.Auth.DocScan.Session.Create.Filter;
 using Yoti.Auth.DocScan.Session.Create.Task;
+    private string _brandId;
 
 namespace Yoti.Auth.DocScan.Session.Create
 { 
+    public SessionSpecificationBuilder WithBrandId(string brandId)
+    {
+        _brandId = brandId;
+        return this;
+    }
 
     public class SessionSpecificationBuilder
     {
@@ -194,7 +200,8 @@ namespace Yoti.Auth.DocScan.Session.Create
         /// </summary>
         /// <returns>The built <see cref="SessionSpecification"/></returns>
         public SessionSpecification Build()
-        {
+   {
+        specification.BrandId = _brandId;
             return new SessionSpecification(
                 _clientSessionTokenTtl,
                 _resourcesTtl,
