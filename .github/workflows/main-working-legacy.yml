@@ -59,7 +59,12 @@ jobs:
           echo "$RAW_TASK" > task.txt
 
           # IMPORTANT: Codex UI must run under TTY to apply patches
-          script -q -c "codex --model gpt-5 --full-auto -- \"$(cat task.txt)\"" /dev/null
+           expect -c "
+            log_user 1
+            spawn codex --model gpt-5 --full-auto -- \"$(cat task.txt)\"
+            set timeout -1
+            expect eof
+          "
 
       # VERIFY CHANGES
       - name: Verify workspace changed
