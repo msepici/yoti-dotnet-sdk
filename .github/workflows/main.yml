@@ -4,154 +4,144 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: "Describe the feature/change AI should apply to the repo"
         type: string
         required: true
+        description: "Describe the change AI should apply"
       base_branch:
-        description: "Branch to start from"
         type: string
         required: false
         default: "master"
       head_branch:
-        description: "Branch to push edits"
         type: string
         required: false
-        default: "ai-auto-edit"
+        default: "ai-edit-patch"
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  apply-change:
+  ai-edit:
     runs-on: ubuntu-latest
 
     steps:
-    # 1) Checkout repo
     - name: Checkout base branch
       uses: actions/checkout@v4
       with:
         ref: ${{ inputs.base_branch }}
         fetch-depth: 0
-        persist-credentials: true
 
-    # 2) Prepare branch
-    - name: Create or reset working branch
+    - name: Prepare working branch
       run: |
-        set -e
         BR="${{ inputs.head_branch }}"
         BASE="${{ inputs.base_branch }}"
 
         git fetch origin "$BR" || true
-
         if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
-          echo "Branch exists → resetting"
           git checkout "$BR"
           git reset --hard "origin/$BR"
         else
-          echo "Creating new branch from base"
           git checkout -B "$BR" "origin/$BASE"
         fi
 
-    # 3) Install OpenAI CLI
-    - name: Install OpenAI CLI
-      run: npm install -g openai
-
-    # 4) Build AI prompt
-    - name: Prepare AI Prompt
+    - name: Build AI prompt
       id: prompt
       run: |
-        PROMPT_FILE="${RUNNER_TEMP}/task.txt"
-
+        FILE="${RUNNER_TEMP}/prompt.txt"
         {
-          echo "IMPORTANT: Perform all code edits IN-PLACE within this repository."
-          echo "Do not propose changes—apply them directly to the actual files."
-          echo "Use your full code-editing (auto-editor) capabilities."
+          echo "You are an AI code editor."
+          echo "Generate a UNIFIED DIFF patch (git diff -u format)."
+          echo "Do not explain. Only output the patch."
           echo
           echo "### USER TASK"
           printf "%s\n" "${{ inputs.task }}"
           echo
           echo "### FILE INDEX"
-          echo "BEGIN_FILE_INDEX"
           git ls-files
-          echo "END_FILE_INDEX"
           echo
-          if [ -f AGENTS.md ]; then
-            echo "### AGENT HINTS"
-            sed 's/\r$//' AGENTS.md
-            echo
-          fi
-        } > "$PROMPT_FILE"
+        } > "$FILE"
 
-        echo "prompt_path=$PROMPT_FILE" >> "$GITHUB_OUTPUT"
+        echo "prompt_file=$FILE" >> $GITHUB_OUTPUT
 
-    # 5) RUN AI — this will modify the repository in-place
-    - name: Run AI Code Editor
+    - name: Call OpenAI (generate patch)
+      id: ai
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
-        set -e
-        PROMPT="${{ steps.prompt.outputs.prompt_path }}"
+        PROMPT=$(cat "${{ steps.prompt.outputs.prompt_file }}")
 
-        # Call the new AI auto-editor
-        openai assistant.exec \
-          --model gpt-4.1 \
-          --input "$(cat "$PROMPT")" \
-          --directory .
+        RESPONSE=$(curl https://api.openai.com/v1/chat/completions \
+          -s \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $OPENAI_API_KEY" \
+          -d "{
+            \"model\": \"gpt-4.1\",
+            \"messages\": [
+              {\"role\": \"system\", \"content\": \"You generate git patches.\"},
+              {\"role\": \"user\", \"content\": \"$PROMPT\"}
+            ]
+          }")
 
-        echo "AI edit completed."
+        PATCH=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
 
-    # 6) Detect changes
-    - name: Check for changes
-      id: detect
+        PATCH_FILE="${RUNNER_TEMP}/change.patch"
+        echo "$PATCH" > "$PATCH_FILE"
+
+        echo "patch_file=$PATCH_FILE" >> $GITHUB_OUTPUT
+
+    - name: Apply patch
       run: |
-        if git diff --quiet; then
-          echo "changed=false" >> "$GITHUB_OUTPUT"
-        else
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+        set -e
+        PATCH="${{ steps.ai.outputs.patch_file }}"
+
+        if ! patch -p1 < "$PATCH" ; then
+          echo "::error::Patch failed to apply."
+          exit 1
         fi
 
-    # 7) Commit & Push
-    - name: Commit and Push Changes
-      if: steps.detect.outputs.changed == 'true'
+    - name: Check diff
+      id: diff
+      run: |
+        if git diff --quiet; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Commit & Push
+      if: steps.diff.outputs.changed == 'true'
       run: |
         git config user.email "ai-bot@users.noreply.github.com"
-        git config user.name  "AI Auto Edit"
+        git config user.name  "AI Patch Bot"
 
         git add -A
-        git commit -m "AI auto-applied changes"
+        git commit -m "AI auto-applied patch"
         git push --force origin "${{ inputs.head_branch }}"
 
-    # 8) Open or update PR
-    - name: Create or Update PR
-      if: steps.detect.outputs.changed == 'true'
+    - name: Create or update PR
+      if: steps.diff.outputs.changed == 'true'
       uses: actions/github-script@v7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const owner = context.repo.owner;
-          const repo = context.repo.repo;
-
-          const head = context.payload.inputs.head_branch;
-          const base = context.payload.inputs.base_branch;
+          const repo  = context.repo.repo;
+          const head  = context.payload.inputs.head_branch;
+          const base  = context.payload.inputs.base_branch;
 
           const prs = await github.rest.pulls.list({
-            owner,
-            repo,
-            state: "open",
-            head: `${owner}:${head}`
+            owner, repo, state: "open", head: `${owner}:${head}`
           });
 
           if (prs.data.length > 0) {
-            core.notice("PR already exists: " + prs.data[0].html_url);
+            core.notice("Existing PR: " + prs.data[0].html_url);
           } else {
             const pr = await github.rest.pulls.create({
-              owner,
-              repo,
+              owner, repo,
               head,
               base,
-              title: "AI auto-applied changes",
-              body: "This PR contains code edits applied automatically by the OpenAI assistant."
+              title: "AI auto-applied patch",
+              body: "Changes applied automatically via OpenAI patch generation."
             });
             core.notice("Created PR: " + pr.data.html_url);
           }
