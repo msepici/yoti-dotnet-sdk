@@ -53,7 +53,7 @@ jobs:
 
       - name: Run Codex (use agents.md + file index)
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY2 }}
           RAW_TASK: ${{ inputs.task }}
         shell: bash
         run: |
