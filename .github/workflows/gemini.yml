@@ -38,24 +38,16 @@ jobs:
         run: |
           BR="${{ inputs.head_branch }}"
           BASE="${{ inputs.base_branch }}"
-
           git fetch origin "$BR" || true
-
           if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
             git checkout -B "$BR" "origin/$BR"
           else
             git checkout -B "$BR" "origin/$BASE"
           fi
 
-      # -----------------------
-      # Install REAL Gemini CLI
-      # -----------------------
       - name: Install Gemini CLI
         run: npm install -g @google/gemini-cli
 
-      # -------------------------------
-      # RUN Gemini Auto-Editor FULL-AUTO
-      # -------------------------------
       - name: Run Gemini FULL-AUTO Editor
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -63,7 +55,6 @@ jobs:
         run: |
           echo "$RAW_TASK" > task_input.txt
 
-          # One-shot prompt (avoids interactive flag!)
           gemini \
             --model gemini-2.0-pro \
             --approval-mode auto_edit \
@@ -72,9 +63,6 @@ jobs:
             --yolo \
             "$(cat task_input.txt)"
 
-      # -----------------------
-      # Commit & Push Changes
-      # -----------------------
       - name: Commit & push changes
         run: |
           git config user.name "gemini-bot"
@@ -94,40 +82,37 @@ jobs:
             echo "PUSHED=false" >> $GITHUB_ENV
           fi
 
-      # -----------------------
-      # Create / Update PR
-      # -----------------------
       - name: Open or update PR
         if: env.PUSHED == 'true'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const owner = context.repo.owner;
-          const repo = context.repo.repo;
-          const head = context.payload.inputs.head_branch;
-          const base = context.payload.inputs.base_branch;
-          const task = context.payload.inputs.task;
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head = context.payload.inputs.head_branch;
+            const base = context.payload.inputs.base_branch;
+            const task = context.payload.inputs.task;
 
-          const { data: prs } = await github.rest.pulls.list({
-            owner, repo, state: "open",
-            head: `${owner}:${head}`,
-          });
-
-          if (prs.length) {
-            core.notice(`Existing PR: ${prs[0].html_url}`);
-          } else {
-            const pr = await github.rest.pulls.create({
-              owner, repo,
-              title: "feat: Gemini-applied changes",
-              head,
-              base,
-              body: [
-                "Automated by Gemini Auto-Editor.",
-                "",
-                "### Task:",
-                task
-              ].join("\n")
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo, state: "open",
+              head: `${owner}:${head}`,
             });
-            core.notice(`PR opened: ${pr.data.html_url}`);
-          }
+
+            if (prs.length) {
+              core.notice(`Existing PR: ${prs[0].html_url}`);
+            } else {
+              const pr = await github.rest.pulls.create({
+                owner, repo,
+                title: "feat: Gemini-applied changes",
+                head,
+                base,
+                body: [
+                  "Automated by Gemini Auto-Editor.",
+                  "",
+                  "### Task:",
+                  task
+                ].join("\n")
+              });
+              core.notice(`PR opened: ${pr.data.html_url}`);
+            }
