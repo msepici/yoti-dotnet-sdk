@@ -47,8 +47,11 @@ jobs:
             git checkout -B "$BR" "origin/$BASE"
           fi
 
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      # FIX: Install REAL Gemini CLI (not google-genai)
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       - name: Install Gemini CLI
-        run: pip install -U google-genai
+        run: npm install -g @google/gemini-cli
 
       - name: Run Gemini FULL-AUTO Editor
         env:
@@ -57,6 +60,7 @@ jobs:
         run: |
           echo "$RAW_TASK" > task_input.txt
 
+          # FULL AUTO-EDIT MODE
           gemini \
             --model gemini-2.0-pro \
             --approval-mode auto_edit \
