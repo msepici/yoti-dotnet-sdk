@@ -1,0 +1,133 @@
+name: Gemini Apply Change
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Describe what Gemini should change"
+        required: true
+        type: string
+      base_branch:
+        description: "Base branch"
+        required: false
+        default: "master"
+        type: string
+      head_branch:
+        description: "Feature branch to apply edits"
+        required: false
+        default: "gemini-auto-edit"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply-change:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Switch or create head branch
+        run: |
+          BR="${{ inputs.head_branch }}"
+          BASE="${{ inputs.base_branch }}"
+
+          git fetch origin "$BR" || true
+
+          if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
+            git checkout -B "$BR" "origin/$BR"
+          else
+            git checkout -B "$BR" "origin/$BASE"
+          fi
+
+      # -----------------------
+      # Install REAL Gemini CLI
+      # -----------------------
+      - name: Install Gemini CLI
+        run: npm install -g @google/gemini-cli
+
+      # -------------------------------
+      # RUN Gemini Auto-Editor FULL-AUTO
+      # -------------------------------
+      - name: Run Gemini FULL-AUTO Editor
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RAW_TASK: ${{ inputs.task }}
+        run: |
+          echo "$RAW_TASK" > task_input.txt
+
+          # One-shot prompt (avoids interactive flag!)
+          gemini \
+            --model gemini-2.0-pro \
+            --approval-mode auto_edit \
+            --allowed-tools edit \
+            --sandbox \
+            --yolo \
+            "$(cat task_input.txt)"
+
+      # -----------------------
+      # Commit & Push Changes
+      # -----------------------
+      - name: Commit & push changes
+        run: |
+          git config user.name "gemini-bot"
+          git config user.email "gemini-bot@users.noreply.github.com"
+
+          echo "----- git status -----"
+          git status --porcelain
+          echo "-----------------------"
+
+          if git status --porcelain | grep -q .; then
+            git add -A
+            git commit -m "feat: Gemini-applied changes"
+            git push --set-upstream origin "${{ inputs.head_branch }}"
+            echo "PUSHED=true" >> $GITHUB_ENV
+          else
+            echo "No changes made."
+            echo "PUSHED=false" >> $GITHUB_ENV
+          fi
+
+      # -----------------------
+      # Create / Update PR
+      # -----------------------
+      - name: Open or update PR
+        if: env.PUSHED == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          const head = context.payload.inputs.head_branch;
+          const base = context.payload.inputs.base_branch;
+          const task = context.payload.inputs.task;
+
+          const { data: prs } = await github.rest.pulls.list({
+            owner, repo, state: "open",
+            head: `${owner}:${head}`,
+          });
+
+          if (prs.length) {
+            core.notice(`Existing PR: ${prs[0].html_url}`);
+          } else {
+            const pr = await github.rest.pulls.create({
+              owner, repo,
+              title: "feat: Gemini-applied changes",
+              head,
+              base,
+              body: [
+                "Automated by Gemini Auto-Editor.",
+                "",
+                "### Task:",
+                task
+              ].join("\n")
+            });
+            core.notice(`PR opened: ${pr.data.html_url}`);
+          }
