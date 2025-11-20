@@ -104,7 +104,9 @@ jobs:
           echo "=====  END TASK PREVIEW  ====="
 
           # Codex exec (NO MODEL FLAG!)
-          codex exec --full-auto --apply-patch -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
+          #codex exec --full-auto --apply-patch -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
+           script -q -c "codex --model gpt-5 --full-auto -- \"$(cat $PROMPT_FILE)\"" /dev/null
+
 
           echo "Codex transcript saved at: $LOG"
           tail -n 200 "$LOG" || true
