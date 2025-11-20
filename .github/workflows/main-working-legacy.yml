@@ -1,0 +1,183 @@
+name: Apply Codex Change
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Describe exactly what Codex should change (can be long)."
+        required: true
+        type: string
+      base_branch:
+        description: "Base branch to start from"
+        required: false
+        default: "master"
+        type: string
+      head_branch:
+        description: "Working branch to push changes"
+        required: false
+        default: "dev-text-codex-2"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply-codex-change:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Prepare Git (create or track head branch)
+        shell: bash
+        env:
+          BR: ${{ inputs.head_branch }}
+          BASE: ${{ inputs.base_branch }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$BR" || true
+          if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
+            git checkout -B "$BR" "origin/$BR"
+          else
+            git checkout -B "$BR" "origin/$BASE"
+          fi
+
+      # ------------------------------
+      # Install Codex CLI 0.23 manually
+      # ------------------------------
+      - name: Install Codex CLI 0.23
+        run: |
+          wget https://registry.npmjs.org/@openai/codex/-/codex-0.23.0.tgz -O codex.tgz
+          tar -xzf codex.tgz
+          cd package
+          npm install -g .
+
+      - name: Run Codex (use agents.md + file index)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # SAME OLD KEY!
+          RAW_TASK: ${{ inputs.task }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TMP="${RUNNER_TEMP:-/tmp}"
+          PROMPT="${TMP}/task.txt"
+          LOG="${TMP}/codex-transcript.log"
+
+          # Start prompt with header
+          {
+            echo "IMPORTANT: Edit files IN-PLACE in this repository. No /tmp patches."
+            echo "Use only the workspace APIs; do not spawn shell commands within the Codex sandbox."
+            echo
+            echo "### USER TASK"
+            printf '%s\n' "$RAW_TASK"
+            echo
+          } > "$PROMPT"
+
+          # Append agent guidance if exists
+          if [ -f agents.md ]; then
+            {
+              echo "### AGENT HINTS (agents.md)"
+              echo "BEGIN_AGENT_HINTS"
+              sed 's/\r$//' agents.md
+              echo "END_AGENT_HINTS"
+              echo
+            } >> "$PROMPT"
+          fi
+
+          # File index
+          {
+            echo "### FILE INDEX (git ls-files)"
+            echo "BEGIN_FILE_INDEX"
+            git ls-files
+            echo "END_FILE_INDEX"
+            echo
+          } >> "$PROMPT"
+
+          echo "===== BEGIN TASK PREVIEW ====="
+          sed -n '1,160p' "$PROMPT" || true
+          echo "=====  END TASK PREVIEW  ====="
+
+          # Codex exec (NO MODEL FLAG!)
+          codex exec --full-auto -- "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
+
+          echo "Codex transcript saved at: $LOG"
+          tail -n 200 "$LOG" || true
+
+      - name: Verify workspace changed (real code edits only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "----- git status (porcelain) -----"
+          git status --porcelain=v1 || true
+          echo "----------------------------------"
+          if ! git status --porcelain=v1 | grep -q '^[ MARCUD]'; then
+            echo "::error title=Codex made no changes::No modified files found after Codex execution."
+            TMP2="${RUNNER_TEMP:-/tmp}"
+            LOG2="${TMP2}/codex-transcript.log"
+            cat $LOG2
+            exit 1
+          fi
+          echo "Workspace has changes."
+
+      - id: commit_push
+        name: Commit & push changes
+        env:
+          BR: ${{ inputs.head_branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name  "codex-bot"
+          git config user.email "codex-bot@users.noreply.github.com"
+
+          echo "----- git diff (name-only) -----"
+          git diff --name-only
+          echo "--------------------------------"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No staged changes; skipping commit."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "feat: Codex-applied changes"
+          git push --set-upstream origin "$BR"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update PR
+        if: steps.commit_push.outputs.pushed == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const headBranch = context.payload.inputs?.head_branch || 'dev-text-codex-2';
+            const baseBranch = context.payload.inputs?.base_branch || 'master';
+
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo, state: "open",
+              head: `${owner}:${headBranch}`
+            });
+
+            if (prs.length) {
+              core.notice(`Existing PR: ${prs[0].html_url}`);
+            } else {
+              const pr = await github.rest.pulls.create({
+                owner, repo,
+                title: "feat: Codex-applied changes",
+                head: headBranch,
+                base: baseBranch,
+                body: [
+                  "Automated by Codex CLI.",
+                  "Transcript is printed in the job logs (stored in runner temp)."
+                ].join("\n")
+              });
+              core.notice(`PR opened: ${pr.data.html_url}`);
+            }
