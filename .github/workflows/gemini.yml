@@ -56,7 +56,7 @@ jobs:
           echo "$RAW_TASK" > task_input.txt
 
           gemini \
-            --model gemini-2.0-pro \
+            --model gemini-2.5 \
             --approval-mode=yolo \
             --allowed-tools=edit \
             --sandbox \
