@@ -54,18 +54,19 @@ jobs:
         run: npm install -g @google/gemini-cli
 
       - name: Run Gemini FULL-AUTO Editor
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          RAW_TASK: ${{ inputs.task }}
-        run: |
-          echo "$RAW_TASK" > task_input.txt
-
-          # FULL AUTO-EDIT MODE
-          gemini \
-            --model gemini-2.0-pro \
-            --approval-mode auto_edit \
-            --allowed-tools edit \
-            --prompt-interactive < task_input.txt
+          env:
+            GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+            RAW_TASK: ${{ inputs.task }}
+          run: |
+            echo "$RAW_TASK" > task_input.txt
+        
+            gemini \
+              --model gemini-2.0-pro \
+              --approval-mode auto_edit \
+              --allowed-tools edit \
+              --sandbox \
+              --yolo \
+              "$(cat task_input.txt)"
 
       - name: Commit & push changes
         run: |
