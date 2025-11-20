@@ -50,6 +50,9 @@ jobs:
       - name: Install Codex CLI 0.23
         run: npm install -g @openai/codex@0.23.0
 
+      - name: Install expect
+        run: sudo apt-get update && sudo apt-get install -y expect
+
       # RUN CODEX VIA PTY (REAL PATCH APPLY)
       - name: Run Codex Auto-Editor (TUI forced)
         env:
