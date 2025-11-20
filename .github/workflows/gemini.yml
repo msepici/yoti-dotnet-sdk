@@ -57,10 +57,9 @@ jobs:
 
           gemini \
             --model gemini-2.0-pro \
-            --approval-mode auto_edit \
-            --allowed-tools edit \
+            --approval-mode=yolo \
+            --allowed-tools=edit \
             --sandbox \
-            --yolo \
             "$(cat task_input.txt)"
 
       - name: Commit & push changes
