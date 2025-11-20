@@ -56,10 +56,9 @@ jobs:
           echo "$RAW_TASK" > task_input.txt
 
           gemini \
-            --model gemini-2.5 \
+            --model gemini-2.0-pro \
             --approval-mode=yolo \
             --allowed-tools=edit \
-            --sandbox \
             "$(cat task_input.txt)"
 
       - name: Commit & push changes
